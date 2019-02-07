@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Vpaint</string>
     <string name="tip_wall">墙面照片</string>
+    <string name="btn_takePhoto">拍照</string>
+    <string name="btn_fromAlbum">相册</string>
+    <string name="btn_cut">剪切</string>
+    <string name="btn_next">下一步</string>
 </resources>
