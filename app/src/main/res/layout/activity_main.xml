@@ -39,7 +39,6 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
         android:text="@string/btn_takePhoto"
         app:layout_constraintEnd_toStartOf="@+id/album"
         app:layout_constraintHorizontal_bias="0.5"
@@ -51,36 +50,44 @@
         android:id="@+id/album"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
         android:text="@string/btn_fromAlbum"
         app:layout_constraintBottom_toBottomOf="@+id/takePhoto"
-        app:layout_constraintEnd_toStartOf="@+id/cut"
+        app:layout_constraintEnd_toStartOf="@+id/rotate"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/takePhoto"
-        app:layout_constraintTop_toTopOf="@+id/takePhoto" />
+        app:layout_constraintStart_toEndOf="@+id/takePhoto" />
 
     <Button
         android:id="@+id/cut"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
         android:text="@string/btn_cut"
-        app:layout_constraintBottom_toBottomOf="@+id/album"
+        app:layout_constraintBottom_toBottomOf="@+id/rotate"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/album"
-        app:layout_constraintTop_toTopOf="@+id/album" />
+        app:layout_constraintStart_toEndOf="@+id/rotate" />
 
     <Button
-        android:id="@+id/button4"
+        android:id="@+id/next"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:text="@string/btn_next"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/album" />
+
+    <Button
+        android:id="@+id/rotate"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_rotate"
+        app:layout_constraintBottom_toBottomOf="@+id/album"
+        app:layout_constraintEnd_toStartOf="@+id/cut"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/album" />
+
 </android.support.constraint.ConstraintLayout>
