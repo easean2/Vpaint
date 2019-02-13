@@ -8,7 +8,7 @@ import android.graphics.Paint;
 public class BitmapOperations {
     private Paint paint;
 
-    public BitmapOperations() {
+    BitmapOperations() {
         this.paint = new Paint();
         this.paint.setAntiAlias(true);
     }
@@ -40,7 +40,7 @@ public class BitmapOperations {
      * new_width:缩放后的宽度
      * new_height:缩放后的高度
      */
-    public Bitmap bitmapScale(Bitmap baseBitmap, int new_width, int new_height) {
+    Bitmap bitmapScale(Bitmap baseBitmap, int new_width, int new_height) {
         // 因为要将图片放大，所以要根据放大的尺寸重新创建Bitmap
         Bitmap afterBitmap = Bitmap.createBitmap(
                 new_width, new_height, baseBitmap.getConfig());
@@ -98,21 +98,20 @@ public class BitmapOperations {
         Canvas canvas = new Canvas(afterBitmap);
         Matrix matrix = new Matrix();
         // 根据原图的中心位置旋转
-        matrix.setRotate(degrees, baseBitmap.getWidth() / 2,
-                baseBitmap.getHeight() / 2);
+        matrix.setRotate(degrees, (float)baseBitmap.getWidth() / 2.0f,
+                (float)baseBitmap.getHeight() / 2.0f);
         canvas.drawBitmap(baseBitmap, matrix, paint);
         return afterBitmap;
     }
     /**
      * 图片绕中心旋转
      */
-    public static Bitmap rotaingImage(Bitmap bitmap, int angle) {
+    Bitmap rotaingImage(Bitmap bitmap, int angle) {
         //旋转图片 动作
-        Matrix matrix = new Matrix();;
+        Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         // 创建新的图片
-        Bitmap resizedBitmap = Bitmap.createBitmap(bitmap, 0, 0,
+        return Bitmap.createBitmap(bitmap, 0, 0,
                 bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-        return resizedBitmap;
     }
 }

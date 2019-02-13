@@ -2,6 +2,7 @@ package com.easean2.vpaint;
 
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ExifInterface;
@@ -25,9 +26,15 @@ public class MainActivity extends AppCompatActivity {
     private static final int TAKE_PHOTO_REQUEST_THREE = 555;
 
     private Button btn_take_photo;
+    private Button btn_rotate;
+    private Button btn_album;
     private Uri imageUri;
     private ImageView iv_image;
     private BitmapOperations bo;
+    private Bitmap originalImage;
+    private Bitmap showImage;
+
+    private int showDegree;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         bo = new BitmapOperations();
         iv_image = findViewById(R.id.wall);
+
+        //拍照键处理
         btn_take_photo = findViewById(R.id.takePhoto);
         btn_take_photo.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -51,11 +60,34 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        //旋转键处理
+        btn_rotate = findViewById(R.id.rotate);
+        btn_rotate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showImage  = rotateImage(originalImage, iv_image.getWidth());
+                iv_image.setImageBitmap(showImage);
+            }
+        });
+
+        //相册按钮处理
+        btn_album = findViewById(R.id.album);
+        btn_album.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent();
+                intent.setAction(Intent.ACTION_PICK);
+                intent.setData(MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(intent, 222);
+            }
+        });
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        String imgPath ;
         switch (requestCode) {
             case 111:
             case 222:
@@ -63,6 +95,13 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "点击取消从相册选择", Toast.LENGTH_LONG).show();
                     return;
                 }
+
+                imageUri = data.getData();
+                imgPath = getImagePath(imageUri, null);
+                originalImage = BitmapFactory.decodeFile(imgPath, getOptions(imgPath));
+                showImage = fitImageView(originalImage, imgPath, iv_image.getWidth());
+                iv_image.setImageBitmap(showImage);
+
                 break;
             case TAKE_PHOTO_REQUEST_ONE:
                 if (resultCode == RESULT_CANCELED) {
@@ -85,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 Bitmap photo = data.getParcelableExtra("data");
                 iv_image.setImageBitmap(photo);
+
                 break;
             case TAKE_PHOTO_REQUEST_THREE:
                 if (resultCode == RESULT_CANCELED) {
@@ -92,10 +132,11 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                String imgPath = imageUri.getPath();
-                Bitmap bitmap = BitmapFactory.decodeFile(imgPath, getOptions(imgPath));
-                Bitmap showImage = fitImageView(bitmap, imgPath, iv_image.getWidth());
+                imgPath = imageUri.getPath();
+                originalImage = BitmapFactory.decodeFile(imgPath, getOptions(imgPath));
+                showImage = fitImageView(originalImage, imgPath, iv_image.getWidth());
                 iv_image.setImageBitmap(showImage);
+
                 break;
 
             default:
@@ -103,20 +144,30 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //让初始照片适应imageview的尺寸
     private Bitmap fitImageView(Bitmap inputImage, String imgPath, int newWidth){
-        Bitmap outImage = null;
+        Bitmap outImage;
 
-        int degree = getExifOrientation(imgPath);
-        Log.d("ERR", "图片角度为：" + degree);
-        //图片垂直时才选择旋转
-        Bitmap tempImg = null;
-        if(degree == 90 || degree == 270){
-            tempImg = bo.rotaingImage(inputImage, degree);
-        }else{
-            tempImg = inputImage;
-        }
+        showDegree = getExifOrientation(imgPath);
+        Log.d("ERR", "图片角度为：" + showDegree);
+
+        Bitmap tempImg = bo.rotaingImage(inputImage, showDegree);
 
 //        按比例缩放图片
+        float rate = (float)tempImg.getHeight() / (float)tempImg.getWidth();
+        int height = (int)(rate * newWidth);
+        outImage = bo.bitmapScale(tempImg, newWidth, height);
+
+        return outImage;
+    }
+
+    private Bitmap rotateImage(Bitmap inputImage, int newWidth){
+        Bitmap outImage;
+
+        showDegree = (showDegree + 90) % 360;
+        Log.d("ERR", "旋转后图片角度为：" + showDegree);
+        Bitmap tempImg = bo.rotaingImage(inputImage, showDegree);
+        //        按比例缩放图片
         float rate = (float)tempImg.getHeight() / (float)tempImg.getWidth();
         int height = (int)(rate * newWidth);
         outImage = bo.bitmapScale(tempImg, newWidth, height);
@@ -130,7 +181,6 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 获取压缩图片的options
      *
-     * @return
      */
     public static BitmapFactory.Options getOptions(String path) {
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -141,6 +191,18 @@ public class MainActivity extends AppCompatActivity {
         options.inJustDecodeBounds = false;
 
         return options;
+    }
+
+    private String getImagePath(Uri uri, String selection) {
+        String path = null; // 通过Uri和selection来获取真实的图片路径
+        Cursor cursor = getContentResolver().query(uri, null, selection, null, null);
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                path = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA));
+            }
+            cursor.close();
+        }
+        return path;
     }
 
     public static int getExifOrientation(String filepath) {
