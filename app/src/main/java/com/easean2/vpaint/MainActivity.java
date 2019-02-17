@@ -17,6 +17,13 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
 import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
@@ -24,10 +31,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int TAKE_PHOTO_REQUEST_ONE = 333;
     private static final int TAKE_PHOTO_REQUEST_TWO = 444;
     private static final int TAKE_PHOTO_REQUEST_THREE = 555;
+    static final double CIRCLE_SIZE_CM = 10;// 圆形实际尺寸10cm
 
-    private Button btn_take_photo;
-    private Button btn_rotate;
-    private Button btn_album;
     private Uri imageUri;
     private ImageView iv_image;
     private BitmapOperations bo;
@@ -35,24 +40,22 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap showImage;
 
     private int showDegree;
+    boolean detectFlag; //是否需要检测
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        staticLoadCVLibraries();
         setContentView(R.layout.activity_main);
         bo = new BitmapOperations();
         iv_image = findViewById(R.id.wall);
+        detectFlag = true; //初始时图片需要检测
 
         //拍照键处理
-        btn_take_photo = findViewById(R.id.takePhoto);
+        Button btn_take_photo = findViewById(R.id.takePhoto);
         btn_take_photo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-//                imageUri = createImageUri(MainActivity.this);
-//                Intent intent = new Intent();
-//                intent.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
-//                intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);//如果不设置EXTRA_OUTPUT getData()  获取的是bitmap数据  是压缩后的
-//                startActivityForResult(intent, TAKE_PHOTO_REQUEST_ONE);
                 try {
                     imageUri = TakePhotoUtils.takePhoto(MainActivity.this, TAKE_PHOTO_REQUEST_THREE);
                 } catch (IOException e) {
@@ -62,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         //旋转键处理
-        btn_rotate = findViewById(R.id.rotate);
+        Button btn_rotate = findViewById(R.id.rotate);
         btn_rotate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -72,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         //相册按钮处理
-        btn_album = findViewById(R.id.album);
+        Button btn_album = findViewById(R.id.album);
         btn_album.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -82,6 +85,82 @@ public class MainActivity extends AppCompatActivity {
                 startActivityForResult(intent, 222);
             }
         });
+
+        //next按钮处理
+        Button btn_next = findViewById(R.id.next);
+        btn_next.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                processImg(showImage);
+            }
+        });
+    }
+
+    public double processImg(Bitmap inputImage){
+        Mat src = new Mat();
+        Bitmap grayBitmap = Bitmap.createBitmap(inputImage.getWidth(), inputImage.getHeight(), Bitmap.Config.RGB_565);
+        Utils.bitmapToMat(inputImage, src);
+        double rate = 0.0f;
+        double[] vCircle1;
+        double[] vCircle2;
+
+        Mat dst = src.clone();
+        Imgproc.cvtColor(src, dst, Imgproc.COLOR_BGR2GRAY);
+
+        Mat circles = new Mat();
+        Imgproc.HoughCircles(dst, circles, Imgproc.HOUGH_GRADIENT, 1, 1, 440, 50, 0, 1000);
+
+        Log.i("Result", "find" + circles.cols() + "circles");
+        for (int i = 0; i < circles.cols() - 1 && detectFlag; i++) { //检测到2个矩形就退出，flag:是否需要继续检测
+            vCircle1 = circles.get(0, i);
+            double p1x = vCircle1[0];
+            double p1y = vCircle1[1];
+            double p1r = vCircle1[2];
+            for (int j = i + 1; j < circles.cols(); j++) {
+                vCircle2 = circles.get(0, j);
+                double p2x = vCircle2[0];
+                double p2y = vCircle2[1];
+                double p2r = vCircle2[2];
+                double dis = getDistance(p2x, p2y, p1x, p1y);
+                if ((dis / (p1r + p2r) < 1.05) && (dis / (p1r + p2r) > 0.95)) {
+                    Log.i("Result", "\tfind 2 circles:");
+                    Log.i("Result", "C" + i + ">>(" + p1x + "," + p1y + ")" + "R:" + p1r);
+                    Log.i("Result", "C" + j + ">>(" + p2x + "," + p2y + ")" + "R:" + p2r);
+                    Log.i("Result", "dis:" + dis);
+                    rate = dis / CIRCLE_SIZE_CM; // 像素与实际尺寸之间的对应比例
+                    detectFlag = false;
+
+                    break;
+                }
+            }
+        }
+
+        return rate;
+    }
+
+    public static double getDistance(double p1x, double p1y, double p2x, double p2y) {
+        double _x = Math.abs(p2x - p1x);
+        double _y = Math.abs(p2y - p1y);
+        return Math.sqrt(_x * _x + _y * _y);
+    }
+
+    private void convertGray(Bitmap inputImage) {
+        Mat src = new Mat();
+        Mat temp = new Mat();
+        Mat dst = new Mat();
+        Utils.bitmapToMat(inputImage, src);
+        Imgproc.cvtColor(src, temp, Imgproc.COLOR_BGRA2BGR);
+        Log.i("CV", "image type:" + (temp.type() == CvType.CV_8UC3));
+        Imgproc.cvtColor(temp, dst, Imgproc.COLOR_BGR2GRAY);
+        Utils.matToBitmap(dst, inputImage);
+        iv_image.setImageBitmap(inputImage);
+    }
+
+    private void staticLoadCVLibraries(){
+        boolean load = OpenCVLoader.initDebug();
+        if(load) {
+            Log.i("CV", "Open CV Libraries loaded...");
+        }
     }
 
     @Override
@@ -96,7 +175,9 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                imageUri = data.getData();
+                if (data != null) {
+                    imageUri = data.getData();
+                }
                 imgPath = getImagePath(imageUri, null);
                 originalImage = BitmapFactory.decodeFile(imgPath, getOptions(imgPath));
                 showImage = fitImageView(originalImage, imgPath, iv_image.getWidth());
@@ -122,7 +203,10 @@ public class MainActivity extends AppCompatActivity {
                     delteImageUri(MainActivity.this, imageUri);
                     return;
                 }
-                Bitmap photo = data.getParcelableExtra("data");
+                Bitmap photo = null;
+                if (data != null) {
+                    photo = data.getParcelableExtra("data");
+                }
                 iv_image.setImageBitmap(photo);
 
                 break;
